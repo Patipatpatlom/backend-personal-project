@@ -17,7 +17,7 @@ import webhookRoutes from "./routes/webhook.routes.js";
 import adminRoutes from "./routes/admin.route.js";
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // 🌐 HTTP SERVER (สำคัญมากสำหรับ socket)
 const server = http.createServer(app);
@@ -25,7 +25,7 @@ const server = http.createServer(app);
 // 🔴 SOCKET.IO SETUP
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5174",
+    origin: process.env.FRONTEND_URL || "http://localhost:5174",
     methods: ["GET", "POST", "PATCH", "DELETE"],
   },
 });
