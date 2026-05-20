@@ -18,8 +18,9 @@ router.post("/upload", upload.single("image"), (req, res) => {
     });
   }
 
+  // Cloudinary returns the URL in req.file.path
   res.json({
-    image: `http://localhost:5000/uploads/${req.file.filename}`,
+    image: req.file.path,
   });
 });
 
