@@ -19,14 +19,22 @@ import adminRoutes from "./routes/admin.route.js";
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// 🌍 Allowed CORS origins (Local + Production)
+const ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 // 🌐 HTTP SERVER (สำคัญมากสำหรับ socket)
 const server = http.createServer(app);
 
 // 🔴 SOCKET.IO SETUP
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5174",
+    origin: ALLOWED_ORIGINS,
     methods: ["GET", "POST", "PATCH", "DELETE"],
+    credentials: true,
   },
 });
 
@@ -46,7 +54,10 @@ io.on("connection", (socket) => {
 });
 
 // 🧠 middleware
-app.use(cors());
+app.use(cors({
+  origin: ALLOWED_ORIGINS,
+  credentials: true,
+}));
 app.use(express.json());
 
 // 🧪 log request
