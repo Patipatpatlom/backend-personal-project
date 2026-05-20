@@ -114,17 +114,34 @@ export const updateOrderStatus = async (req, res) => {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    const allowed = [
+    const allowedInput = [
       "PENDING",
       "PAID",
       "SHIPPED",
       "COMPLETED",
       "CANCELLED",
+      "WAITING",
+      "SUCCESS",
     ];
 
-    if (!allowed.includes(status)) {
+    const upperStatus = (status || "").toUpperCase();
+
+    if (!allowedInput.includes(upperStatus)) {
       return res.status(400).json({ message: "Invalid status 💀" });
     }
+
+    // 🎯 Map input statuses to actual DB enum values defined in schema.prisma
+    const statusMap = {
+      PENDING: "PENDING",
+      PAID: "PENDING",
+      SHIPPED: "WAITING",
+      WAITING: "WAITING",
+      COMPLETED: "SUCCESS",
+      SUCCESS: "SUCCESS",
+      CANCELLED: "PENDING", // Fallback to PENDING as CANCELLED is not in db Status enum
+    };
+
+    const dbStatus = statusMap[upperStatus] || "PENDING";
 
     const order = await prisma.order.findUnique({
       where: { id: Number(orderId) },
@@ -136,8 +153,18 @@ export const updateOrderStatus = async (req, res) => {
 
     const updated = await prisma.order.update({
       where: { id: Number(orderId) },
-      data: { status },
+      data: { status: dbStatus },
     });
+
+    // ⚡ Broadcast order status update in real-time to all connected users
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("ORDER_STATUS_UPDATED", {
+        orderId: Number(orderId),
+        status: dbStatus,
+      });
+      console.log(`⚡ WebSocket: Broadcasted status change of Order #${orderId} to ${dbStatus}`);
+    }
 
     res.json(updated);
   } catch (error) {

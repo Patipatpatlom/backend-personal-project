@@ -33,6 +33,9 @@ const io = new Server(server, {
 // ⚡ export io ให้ controller ใช้ได้
 export { io };
 
+// 🧠 Register io globally in Express app to avoid circular dependencies
+app.set("io", io);
+
 // 🔌 socket connection
 io.on("connection", (socket) => {
   console.log("⚡ Admin/User connected:", socket.id);
