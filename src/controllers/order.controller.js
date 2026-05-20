@@ -30,13 +30,12 @@ export const createOrder = async (req, res) => {
         return res.status(404).json({ message: "Cake not found 💀" });
       }
 
-      const itemPrice = Number(item.price) || cake.price;
-      totalPrice += itemPrice * item.quantity;
+      totalPrice += cake.price * item.quantity;
 
       orderItemsData.push({
         cakeId: item.cakeId,
         quantity: item.quantity,
-        price: itemPrice,
+        price: cake.price,
       });
     }
 
@@ -70,11 +69,7 @@ export const getAllOrders = async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
       include: {
-        items: {
-          include: {
-            cake: true,
-          },
-        },
+        items: true,
         user: true,
       },
       orderBy: {
@@ -98,11 +93,7 @@ export const getMyOrders = async (req, res) => {
     const orders = await prisma.order.findMany({
       where: { userId },
       include: {
-        items: {
-          include: {
-            cake: true,
-          },
-        },
+        items: true,
       },
       orderBy: {
         createdAt: "desc",
@@ -179,6 +170,50 @@ export const updateOrderStatus = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: "Update status failed 💀",
+      error: error.message,
+    });
+  }
+};
+
+/* =========================
+   🔥 DELETE ORDER (ADMIN ONLY, ONLY WHEN SUCCESS/COMPLETED)
+========================= */
+export const deleteOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userRole = req.user.role;
+
+    if (userRole !== "ADMIN") {
+      return res.status(403).json({ message: "Forbidden 💀 Only admins can delete orders." });
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: Number(orderId) },
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found 💀" });
+    }
+
+    // Only allow deletion if the status is SUCCESS (COMPLETED)
+    if (order.status !== "SUCCESS") {
+      return res.status(400).json({ message: "Cannot delete order. Order must be completed first 💀" });
+    }
+
+    // Delete payment if exists to prevent Prisma relation constraints
+    await prisma.payment.deleteMany({
+      where: { orderId: Number(orderId) },
+    });
+
+    // Delete order (will cascade delete OrderItems)
+    await prisma.order.delete({
+      where: { id: Number(orderId) },
+    });
+
+    res.json({ message: "Order deleted successfully 🎉", orderId: Number(orderId) });
+  } catch (error) {
+    res.status(500).json({
+      message: "Delete order failed 💀",
       error: error.message,
     });
   }
