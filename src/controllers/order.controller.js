@@ -30,12 +30,13 @@ export const createOrder = async (req, res) => {
         return res.status(404).json({ message: "Cake not found 💀" });
       }
 
-      totalPrice += cake.price * item.quantity;
+      const itemPrice = Number(item.price) || cake.price;
+      totalPrice += itemPrice * item.quantity;
 
       orderItemsData.push({
         cakeId: item.cakeId,
         quantity: item.quantity,
-        price: cake.price,
+        price: itemPrice,
       });
     }
 
@@ -69,7 +70,11 @@ export const getAllOrders = async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
       include: {
-        items: true,
+        items: {
+          include: {
+            cake: true,
+          },
+        },
         user: true,
       },
       orderBy: {
@@ -93,7 +98,11 @@ export const getMyOrders = async (req, res) => {
     const orders = await prisma.order.findMany({
       where: { userId },
       include: {
-        items: true,
+        items: {
+          include: {
+            cake: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
